@@ -1,0 +1,10 @@
+services:
+  web:
+    build: .
+    image: terrain_web:latest
+    container_name: terrain_web
+    ports:
+      - "3020:3020"
+    env_file:
+      - .env
+    restart: unless-stopped

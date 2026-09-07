@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match tennis hiver 2026-2027</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            background-image: url('/tennis.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto p-4 max-w-6xl">
+        <nav class="flex items-center justify-between mb-6 flex-wrap gap-2 bg-white bg-opacity-80 rounded shadow p-3">
+            <span class="text-xl font-bold">🎾 Match tennis hiver 2026-2027</span>
+            <div>
+                <a href="/" class="bg-blue-500 text-white font-bold py-2 px-4 rounded mr-2">Calendrier</a>
+                <a href="/ajout.html" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Gestion des joueurs</a>
+            </div>
+        </nav>
+
+        <div class="bg-white rounded shadow p-4 mb-4 flex items-center gap-3 flex-wrap">
+            <button id="btnGenerer" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Créer calendrier</button>
+            <button id="btnReset" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Réinitialiser</button>
+            <span class="text-gray-500 text-sm">
+                La génération crée les matchs <strong>une seule fois</strong> pour toute la saison
+                (tous les dimanches du 01/10/2026 au 30/03/2027, 4 joueurs par match,
+                min. 4 joueurs — les joueurs tournent pour jouer le même nombre de matchs).
+            </span>
+        </div>
+
+        <div id="message" class="hidden mb-4 p-3 rounded font-semibold"></div>
+
+        <h2 class="text-lg font-bold mb-2 inline-block bg-white bg-opacity-80 rounded px-3 py-1"><span id="nbMatchs">0</span> match(s) programmé(s)</h2>
+        <div class="bg-white rounded shadow overflow-x-auto">
+            <table class="table-auto w-full">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Date du dimanche</th>
+                        <th class="px-4 py-2 text-left">Joueur 1</th>
+                        <th class="px-4 py-2 text-left">Joueur 2</th>
+                        <th class="px-4 py-2 text-left">Joueur 3</th>
+                        <th class="px-4 py-2 text-left">Joueur 4</th>
+                        <th class="px-4 py-2 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="corpsCalendrier"></tbody>
+            </table>
+            <p id="vide" class="hidden p-4 text-gray-500">Aucun match généré. Cliquez sur « Créer calendrier ».</p>
+        </div>
+    </div>
+
+    <!-- Popup de modification d'un match -->
+    <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded shadow-lg p-6 w-full max-w-md mx-4">
+            <h3 class="text-lg font-bold mb-1">Modifier le match</h3>
+            <p id="modalDate" class="text-gray-600 mb-4 capitalize"></p>
+            <div id="modalErreur" class="hidden mb-3 p-2 rounded bg-red-100 text-red-800 text-sm font-semibold"></div>
+            <div id="zonesSelects" class="space-y-3"></div>
+            <p class="text-gray-500 text-xs mt-3">⚠️ Les 4 joueurs doivent être différents. Modifier manuellement peut rompre l'égalité du nombre de matchs par joueur.</p>
+            <div class="flex gap-2 mt-4 justify-end">
+                <button id="btnModalAnnuler" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Annuler</button>
+                <button id="btnModalEnregistrer" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fmtDate = new Intl.DateTimeFormat('fr-BE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+        let matchs = [];
+        let joueurs = [];
+        let matchEnCours = null;
+
+        function echapperHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+
+        function afficherMessage(texte, ok) {
+            const el = document.getElementById('message');
+            el.textContent = texte;
+            el.className = 'mb-4 p-3 rounded font-semibold ' + (ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+        }
+
+        async function lireReponse(res) {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw Object.assign(new Error(data.error || `Erreur HTTP ${res.status}`), { status: res.status });
+            return data;
+        }
+
+        async function chargerCalendrier() {
+            try {
+                [matchs, joueurs] = await Promise.all([
+                    lireReponse(await fetch('/api/calendrier')),
+                    lireReponse(await fetch('/api/joueurs')),
+                ]);
+                document.getElementById('nbMatchs').textContent = matchs.length;
+                document.getElementById('vide').classList.toggle('hidden', matchs.length > 0);
+                document.getElementById('corpsCalendrier').innerHTML = matchs.map(m =>
+                    `<tr class="hover:bg-gray-50">
+                        <td class="border px-4 py-2 capitalize whitespace-nowrap">${fmtDate.format(new Date(m.date + 'T00:00:00'))}</td>
+                        <td class="border px-4 py-2">${echapperHtml(m.joueur1 ?? '')}</td>
+                        <td class="border px-4 py-2">${echapperHtml(m.joueur2 ?? '')}</td>
+                        <td class="border px-4 py-2">${echapperHtml(m.joueur3 ?? '')}</td>
+                        <td class="border px-4 py-2">${echapperHtml(m.joueur4 ?? '')}</td>
+                        <td class="border px-4 py-2">
+                            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded" onclick="ouvrirModal(${m.id})">Modifier</button>
+                        </td>
+                    </tr>`
+                ).join('');
+            } catch (e) {
+                afficherMessage(e.message, false);
+            }
+        }
+
+        function ouvrirModal(id) {
+            matchEnCours = matchs.find(m => m.id === id);
+            if (!matchEnCours) return;
+            document.getElementById('modalDate').textContent = fmtDate.format(new Date(matchEnCours.date + 'T00:00:00'));
+            document.getElementById('modalErreur').classList.add('hidden');
+            const zone = document.getElementById('zonesSelects');
+            zone.innerHTML = '';
+            for (let i = 1; i <= 4; i++) {
+                const bloc = document.createElement('div');
+                const label = document.createElement('label');
+                label.className = 'block text-gray-700 font-bold mb-1';
+                label.textContent = `Joueur ${i}`;
+                const select = document.createElement('select');
+                select.id = `selectJoueur${i}`;
+                select.className = 'border rounded w-full py-2 px-3';
+                for (const j of joueurs) {
+                    const option = document.createElement('option');
+                    option.value = j.id;
+                    option.textContent = `${j.nom} ${j.prenom}`;
+                    if (j.id === matchEnCours[`joueur${i}_id`]) option.selected = true;
+                    select.appendChild(option);
+                }
+                bloc.appendChild(label);
+                bloc.appendChild(select);
+                zone.appendChild(bloc);
+            }
+            document.getElementById('modal').classList.remove('hidden');
+        }
+
+        function fermerModal() {
+            document.getElementById('modal').classList.add('hidden');
+            matchEnCours = null;
+        }
+
+        function afficherErreurModal(texte) {
+            const el = document.getElementById('modalErreur');
+            el.textContent = texte;
+            el.classList.remove('hidden');
+        }
+
+        document.getElementById('btnModalAnnuler').addEventListener('click', fermerModal);
+        document.getElementById('modal').addEventListener('click', (e) => { if (e.target.id === 'modal') fermerModal(); });
+
+        document.getElementById('btnModalEnregistrer').addEventListener('click', async () => {
+            if (!matchEnCours) return;
+            const ids = [1, 2, 3, 4].map(i => parseInt(document.getElementById(`selectJoueur${i}`).value, 10));
+            if (new Set(ids).size !== 4) {
+                afficherErreurModal('Les 4 joueurs doivent être différents.');
+                return;
+            }
+            try {
+                const data = await lireReponse(await fetch(`/api/calendrier/${matchEnCours.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        joueur1_id: ids[0], joueur2_id: ids[1],
+                        joueur3_id: ids[2], joueur4_id: ids[3],
+                    }),
+                }));
+                fermerModal();
+                afficherMessage(data.message, true);
+                chargerCalendrier();
+            } catch (e) {
+                afficherErreurModal(e.message);
+            }
+        });
+
+        async function generer(force) {
+            return lireReponse(await fetch('/api/calendrier/generer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force }),
+            }));
+        }
+
+        document.getElementById('btnGenerer').addEventListener('click', async () => {
+            if (!confirm('Générer le calendrier pour toute la saison ?')) return;
+            try {
+                const data = await generer(false);
+                afficherMessage(data.message, true);
+            } catch (e) {
+                if (e.status === 409 && confirm(e.message + '\n\nRéinitialiser et régénérer ?')) {
+                    try {
+                        const data = await generer(true);
+                        afficherMessage(data.message, true);
+                    } catch (e2) {
+                        afficherMessage(e2.message, false);
+                    }
+                } else {
+                    afficherMessage(e.message, false);
+                }
+            }
+            chargerCalendrier();
+        });
+
+        document.getElementById('btnReset').addEventListener('click', async () => {
+            if (!confirm('Supprimer tous les matchs du calendrier ?')) return;
+            try {
+                const data = await lireReponse(await fetch('/api/calendrier/reinitialiser', { method: 'POST' }));
+                afficherMessage(data.message, true);
+            } catch (e) {
+                afficherMessage(e.message, false);
+            }
+            chargerCalendrier();
+        });
+
+        document.addEventListener('DOMContentLoaded', chargerCalendrier);
+    </script>
+</body>
+</html>

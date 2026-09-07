@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des joueurs — Match tennis hiver 2026-2027</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            background-image: url('/tennis.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="container mx-auto p-4 max-w-4xl">
+        <nav class="flex items-center justify-between mb-6 flex-wrap gap-2 bg-white bg-opacity-80 rounded shadow p-3">
+            <span class="text-xl font-bold">🎾 Gestion des joueurs</span>
+            <div>
+                <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">Calendrier</a>
+                <a href="/ajout.html" class="bg-blue-500 text-white font-bold py-2 px-4 rounded">Gestion des joueurs</a>
+            </div>
+        </nav>
+
+        <div id="message" class="hidden mb-4 p-3 rounded font-semibold"></div>
+
+        <h1 class="text-2xl font-bold mb-4 inline-block bg-white bg-opacity-80 rounded px-3 py-1" id="titreForm">Ajouter un joueur</h1>
+        <form id="playerForm" class="mb-6 bg-white p-6 rounded shadow" novalidate>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2" for="nom">Nom *</label>
+                <input type="text" id="nom" required maxlength="100" class="border rounded w-full py-2 px-3">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2" for="prenom">Prénom *</label>
+                <input type="text" id="prenom" required maxlength="100" class="border rounded w-full py-2 px-3">
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2" for="gsm">GSM *</label>
+                <input type="tel" id="gsm" required placeholder="+32 4xx xx xx xx ou 04xx xx xx xx" class="border rounded w-full py-2 px-3">
+                <p class="text-gray-500 text-sm mt-1">Formats acceptés : +32475123456, 0475 12 34 56, 0475/12.34.56</p>
+            </div>
+            <div class="mb-4">
+                <label class="block text-gray-700 font-bold mb-2" for="email">Email *</label>
+                <input type="email" id="email" required placeholder="prenom.nom@exemple.be" class="border rounded w-full py-2 px-3">
+            </div>
+            <div class="flex gap-2">
+                <button type="submit" id="btnSubmit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Ajouter</button>
+                <button type="button" id="btnAnnuler" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded hidden">Annuler</button>
+            </div>
+        </form>
+
+        <h2 class="text-xl font-bold mb-2 inline-block bg-white bg-opacity-80 rounded px-3 py-1">
+            Liste des joueurs
+            <span id="badgeCompteur" class="text-sm font-bold py-1 px-3 rounded text-white bg-red-500">0 / 4</span>
+        </h2>
+        <p class="text-gray-700 text-sm mb-4 inline-block bg-white bg-opacity-80 rounded px-2 py-1">Au moins 4 joueurs sont requis pour générer le calendrier (tous les joueurs jouent chaque dimanche).</p>
+        <div class="bg-white rounded shadow overflow-x-auto">
+            <table class="table-auto w-full">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Nom complet</th>
+                        <th class="px-4 py-2 text-left">GSM</th>
+                        <th class="px-4 py-2 text-left">Email</th>
+                        <th class="px-4 py-2 text-left">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="playersTable"></tbody>
+            </table>
+            <p id="vide" class="hidden p-4 text-gray-500">Aucun joueur pour le moment.</p>
+        </div>
+    </div>
+
+    <script>
+        const GSM_RE = /^(\+32[0-9]{9}|0[0-9]{9})$/;
+        const EMAIL_RE = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+        let joueurs = [];
+        let editionId = null;
+
+        const form = document.getElementById('playerForm');
+
+        function afficherMessage(texte, ok) {
+            const el = document.getElementById('message');
+            el.textContent = texte;
+            el.className = 'mb-4 p-3 rounded font-semibold ' + (ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+        }
+
+        function masquerMessage() {
+            document.getElementById('message').classList.add('hidden');
+        }
+
+        async function lireReponse(res) {
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `Erreur HTTP ${res.status}`);
+            return data;
+        }
+
+        function majBadge(nb) {
+            const badge = document.getElementById('badgeCompteur');
+            badge.textContent = `${nb} (min. 4)`;
+            badge.className = 'text-sm font-bold py-1 px-3 rounded text-white ' + (nb >= 4 ? 'bg-green-500' : 'bg-red-500');
+        }
+
+        async function chargerJoueurs() {
+            try {
+                joueurs = await lireReponse(await fetch('/api/joueurs'));
+                majBadge(joueurs.length);
+                document.getElementById('vide').classList.toggle('hidden', joueurs.length > 0);
+                document.getElementById('playersTable').innerHTML = joueurs.map(p =>
+                    `<tr class="hover:bg-gray-50">
+                        <td class="border px-4 py-2">${p.nom} ${p.prenom}</td>
+                        <td class="border px-4 py-2">${p.gsm || ''}</td>
+                        <td class="border px-4 py-2">${p.email || ''}</td>
+                        <td class="border px-4 py-2 whitespace-nowrap">
+                            <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded mr-1" onclick="editerJoueur(${p.id})">Modifier</button>
+                            <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded" onclick="supprimerJoueur(${p.id})">Supprimer</button>
+                        </td>
+                    </tr>`
+                ).join('');
+            } catch (e) {
+                afficherMessage(e.message, false);
+            }
+        }
+
+        function reinitialiserForm() {
+            form.reset();
+            editionId = null;
+            document.getElementById('titreForm').textContent = 'Ajouter un joueur';
+            document.getElementById('btnSubmit').textContent = 'Ajouter';
+            document.getElementById('btnAnnuler').classList.add('hidden');
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            masquerMessage();
+            const data = {
+                nom: document.getElementById('nom').value.trim(),
+                prenom: document.getElementById('prenom').value.trim(),
+                gsm: document.getElementById('gsm').value.replace(/[\s./-]/g, ''),
+                email: document.getElementById('email').value.trim(),
+            };
+
+            if (!data.nom || !data.prenom) { afficherMessage('Le nom et le prénom sont requis.', false); return; }
+            if (!GSM_RE.test(data.gsm)) { afficherMessage('GSM invalide. Formats acceptés : +32475123456 ou 0475123456.', false); return; }
+            if (!EMAIL_RE.test(data.email)) { afficherMessage('Email invalide.', false); return; }
+
+            const url = editionId ? `/api/joueurs/${editionId}` : '/api/joueurs';
+            const method = editionId ? 'PUT' : 'POST';
+            try {
+                const res = await lireReponse(await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data),
+                }));
+                afficherMessage(res.message, true);
+                reinitialiserForm();
+                chargerJoueurs();
+            } catch (err) {
+                afficherMessage(err.message, false);
+            }
+        });
+
+        document.getElementById('btnAnnuler').addEventListener('click', reinitialiserForm);
+
+        window.editerJoueur = (id) => {
+            const p = joueurs.find(x => x.id === id);
+            if (!p) return;
+            document.getElementById('nom').value = p.nom;
+            document.getElementById('prenom').value = p.prenom;
+            document.getElementById('gsm').value = p.gsm || '';
+            document.getElementById('email').value = p.email || '';
+            editionId = id;
+            document.getElementById('titreForm').textContent = `Modifier ${p.nom} ${p.prenom}`;
+            document.getElementById('btnSubmit').textContent = 'Enregistrer';
+            document.getElementById('btnAnnuler').classList.remove('hidden');
+            masquerMessage();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.supprimerJoueur = async (id) => {
+            const p = joueurs.find(x => x.id === id);
+            if (!confirm(`Supprimer ${p ? p.nom + ' ' + p.prenom : 'ce joueur'} ?`)) return;
+            try {
+                const res = await lireReponse(await fetch(`/api/joueurs/${id}`, { method: 'DELETE' }));
+                afficherMessage(res.message, true);
+                if (editionId === id) reinitialiserForm();
+                chargerJoueurs();
+            } catch (e) {
+                afficherMessage(e.message, false);
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', chargerJoueurs);
+    </script>
+</body>
+</html>
