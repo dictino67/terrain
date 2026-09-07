@@ -20,9 +20,20 @@
             <span class="text-xl font-bold">🎾 Match tennis hiver 2026-2027</span>
             <div>
                 <a href="/" class="bg-blue-500 text-white font-bold py-2 px-4 rounded mr-2">Calendrier</a>
+                <a href="/indexnew.html" class="bg-blue-500 text-white font-bold py-2 px-4 rounded mr-2">Administration</a>
                 <a href="/ajout.html" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded">Gestion des joueurs</a>
             </div>
         </nav>
+
+        <div class="bg-white rounded shadow p-4 mb-4 flex items-center gap-3 flex-wrap">
+            <button id="btnGenerer" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Créer calendrier</button>
+            <button id="btnReset" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Réinitialiser</button>
+            <span class="text-gray-500 text-sm">
+                La génération crée les matchs <strong>une seule fois</strong> pour toute la saison
+                (tous les dimanches du 01/10/2026 au 30/03/2027, 4 joueurs par match,
+                min. 4 joueurs — les joueurs tournent pour jouer le même nombre de matchs).
+            </span>
+        </div>
 
         <div id="message" class="hidden mb-4 p-3 rounded font-semibold"></div>
 
@@ -41,7 +52,7 @@
                 </thead>
                 <tbody id="corpsCalendrier"></tbody>
             </table>
-            <p id="vide" class="hidden p-4 text-gray-500">Aucun match généré pour le moment.</p>
+            <p id="vide" class="hidden p-4 text-gray-500">Aucun match généré. Cliquez sur « Créer calendrier ».</p>
         </div>
     </div>
 
@@ -172,6 +183,45 @@
             } catch (e) {
                 afficherErreurModal(e.message);
             }
+        });
+
+        async function generer(force) {
+            return lireReponse(await fetch('/api/calendrier/generer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force }),
+            }));
+        }
+
+        document.getElementById('btnGenerer').addEventListener('click', async () => {
+            if (!confirm('Générer le calendrier pour toute la saison ?')) return;
+            try {
+                const data = await generer(false);
+                afficherMessage(data.message, true);
+            } catch (e) {
+                if (e.status === 409 && confirm(e.message + '\n\nRéinitialiser et régénérer ?')) {
+                    try {
+                        const data = await generer(true);
+                        afficherMessage(data.message, true);
+                    } catch (e2) {
+                        afficherMessage(e2.message, false);
+                    }
+                } else {
+                    afficherMessage(e.message, false);
+                }
+            }
+            chargerCalendrier();
+        });
+
+        document.getElementById('btnReset').addEventListener('click', async () => {
+            if (!confirm('Supprimer tous les matchs du calendrier ?')) return;
+            try {
+                const data = await lireReponse(await fetch('/api/calendrier/reinitialiser', { method: 'POST' }));
+                afficherMessage(data.message, true);
+            } catch (e) {
+                afficherMessage(e.message, false);
+            }
+            chargerCalendrier();
         });
 
         document.addEventListener('DOMContentLoaded', chargerCalendrier);

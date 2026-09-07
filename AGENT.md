@@ -61,3 +61,6 @@ Développer une application web complète (Frontend HTML/JS + Backend Flask + Ba
   - `calendrier.py` : round-robin (fenêtre glissante de 4) ; log d'avertissement si l'équité parfaite est impossible (26×4 non divisible par le nombre de joueurs).
   - `app.py` : `PUT /api/calendrier/<id>` réintroduit (met à jour les 4 lignes de participation) ; `GET /api/calendrier` renvoie les 4 postes.
   - `index.html` : 4 colonnes Joueur 1-4 + bouton « Modifier » par match (popup, 4 selects depuis la table joueur) ; boutons « Créer calendrier »/« Réinitialiser » toujours visibles (la régénération forcée est proposée si le calendrier existe).
+- **2026-09-07 (v5)** : Séparation consultation / administration.
+  - `index.html` : vue **consultation** — boutons « Créer calendrier » et « Réinitialiser » retirés (le tableau et le bouton « Modifier » par match restent).
+  - `indexnew.html` : nouvelle page **administration** (route `/indexnew.html`), identique mais avec les boutons « Créer calendrier » et « Réinitialiser ». Lien « Administration » ajouté dans sa barre de navigation.

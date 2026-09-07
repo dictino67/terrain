@@ -90,6 +90,11 @@ def page_ajout():
     return send_from_directory(".", "ajout.html")
 
 
+@app.route("/indexnew.html")
+def page_indexnew():
+    return send_from_directory(".", "indexnew.html")
+
+
 @app.route("/tennis.png")
 def image_fond():
     return send_from_directory(".", "tennis.png")

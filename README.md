@@ -4,7 +4,7 @@ Application web simple pour gérer 4 joueurs et générer automatiquement le
 calendrier des matchs de la saison : tous les dimanches entre le
 **01/10/2026** et le **30/03/2027**.
 
-- **Frontend** : `index.html` (vue calendrier) et `ajout.html` (gestion des joueurs), Tailwind CSS via CDN, JavaScript vanilla.
+- **Frontend** : `index.html` (vue calendrier, consultation), `indexnew.html` (même vue + boutons « Créer calendrier » / « Réinitialiser » — administration) et `ajout.html` (gestion des joueurs), Tailwind CSS via CDN, JavaScript vanilla.
 - **Backend** : `app.py` (Flask) — sert les pages et l'API REST sur le port **3020**.
 - **Génération** : `calendrier.py` — peuple la table `calendrier` (utilisable en CLI ou via l'API).
 - **Base** : PostgreSQL (tables `joueur` et `calendrier`, créées automatiquement au démarrage).
