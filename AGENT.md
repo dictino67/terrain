@@ -64,3 +64,9 @@ Développer une application web complète (Frontend HTML/JS + Backend Flask + Ba
 - **2026-09-07 (v5)** : Séparation consultation / administration.
   - `index.html` : vue **consultation** — boutons « Créer calendrier » et « Réinitialiser » retirés (le tableau et le bouton « Modifier » par match restent).
   - `indexnew.html` : nouvelle page **administration** (route `/indexnew.html`), identique mais avec les boutons « Créer calendrier » et « Réinitialiser ». Lien « Administration » ajouté dans sa barre de navigation.
+- **2026-09-08** : Sécurisation de l'application et ajout de l'authentification.
+  - Ajout de `login.html` (page de connexion Tailwind CSS avec logo tennis et messages d'erreur).
+  - Gestion des variables d'environnement dans `.env` : `AUTH_USERNAME` (`joueur`), `AUTH_PASSWORD` (`Hiver@1610`) et `SECRET_KEY`.
+  - Protection des routes dans `app.py` via `before_request` et sessions Flask (`/login`, `/logout`, `/api/login`, `/api/logout`).
+  - Ajout du bouton Déconnexion dans les barres de navigation (`index.html`, `indexnew.html`, `ajout.html`).
+  - Mise à jour du `Dockerfile` pour inclure `login.html`.

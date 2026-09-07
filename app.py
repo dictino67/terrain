@@ -1,6 +1,8 @@
 """Backend Flask : sert les pages statiques et l'API REST (port 3020).
 
 Endpoints API :
+- POST   /api/login                    Authentification de l'utilisateur
+- POST   /api/logout                   Déconnexion
 - GET    /api/joueurs                  Liste des joueurs
 - POST   /api/joueurs                  Ajout d'un joueur (validation complète)
 - PUT    /api/joueurs/<id>             Modification d'un joueur
@@ -11,22 +13,40 @@ Endpoints API :
 - POST   /api/calendrier/reinitialiser Vide le calendrier
 """
 
+import hmac
 import logging
 import os
 import re
 
 import psycopg2
-from flask import Flask, jsonify, request, send_from_directory
+from dotenv import load_dotenv
+from flask import Flask, jsonify, redirect, request, send_from_directory, session
 
 from calendrier import CalendrierError, generer_calendrier
 from db import get_connection, init_db
 
+load_dotenv()
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 app = Flask(__name__, static_folder=None)
+app.secret_key = os.getenv("SECRET_KEY", "cle_secrete_par_defaut_a_changer")
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 GSM_RE = re.compile(r"^\+32[0-9]{9}$")
+
+PUBLIC_PATHS = {"/login", "/login.html", "/api/login", "/tennis.png"}
+
+
+@app.before_request
+def verifier_authentification():
+    """Protège toutes les routes sauf la page de connexion et les ressources publiques."""
+    if request.path in PUBLIC_PATHS or request.path.startswith("/static/"):
+        return None
+    if not session.get("authenticated"):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Authentification requise."}), 401
+        return redirect(f"/login.html?next={request.path}")
 
 
 def normaliser_gsm(valeur):
@@ -76,6 +96,44 @@ def email_existe(cur, email, exclure_id=None):
     else:
         cur.execute("SELECT 1 FROM joueur WHERE lower(email) = %s", (email,))
     return cur.fetchone() is not None
+
+
+# ---------- Authentification ----------
+
+@app.route("/login")
+@app.route("/login.html")
+def page_login():
+    if session.get("authenticated"):
+        return redirect("/")
+    return send_from_directory(".", "login.html")
+
+
+@app.route("/logout")
+def page_logout():
+    session.clear()
+    return redirect("/login.html")
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+
+    auth_user = os.getenv("AUTH_USERNAME", "joueur")
+    auth_pass = os.getenv("AUTH_PASSWORD", "Hiver@1610")
+
+    if hmac.compare_digest(username, auth_user) and hmac.compare_digest(password, auth_pass):
+        session["authenticated"] = True
+        session["user"] = username
+        return jsonify({"message": "Connexion réussie."})
+    return jsonify({"error": "Nom d'utilisateur ou mot de passe incorrect."}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    session.clear()
+    return jsonify({"message": "Déconnexion réussie."})
 
 
 # ---------- Pages statiques ----------

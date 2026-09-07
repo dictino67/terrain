@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion — Match tennis hiver 2026-2027</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css">
+    <style>
+        body {
+            background-image: url('/tennis.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white bg-opacity-95 rounded-xl shadow-2xl p-8 backdrop-filter backdrop-blur-sm">
+        <div class="text-center mb-6">
+            <div class="inline-block p-3 bg-blue-100 rounded-full mb-3 text-3xl">🎾</div>
+            <h1 class="text-2xl font-bold text-gray-800">Match tennis hiver 2026-2027</h1>
+            <p class="text-gray-600 text-sm mt-1">Veuillez vous connecter pour accéder à l'application</p>
+        </div>
+
+        <div id="messageErreur" class="hidden mb-4 p-3 rounded-lg bg-red-100 border border-red-300 text-red-700 text-sm font-medium"></div>
+
+        <form id="loginForm" class="space-y-4" novalidate>
+            <div>
+                <label for="username" class="block text-sm font-bold text-gray-700 mb-1">Nom d'utilisateur</label>
+                <input 
+                    type="text" 
+                    id="username" 
+                    name="username" 
+                    required 
+                    autocomplete="username"
+                    placeholder="Nom d'utilisateur" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                >
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-bold text-gray-700 mb-1">Mot de passe</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    required 
+                    autocomplete="current-password"
+                    placeholder="••••••••" 
+                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                >
+            </div>
+
+            <button 
+                type="submit" 
+                id="btnSubmit"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 px-4 rounded-lg transition duration-200 shadow-md hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-50"
+            >
+                Se connecter
+            </button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('loginForm');
+        const usernameInput = document.getElementById('username');
+        const passwordInput = document.getElementById('password');
+        const messageErreur = document.getElementById('messageErreur');
+        const btnSubmit = document.getElementById('btnSubmit');
+
+        function afficherErreur(msg) {
+            messageErreur.textContent = msg;
+            messageErreur.classList.remove('hidden');
+        }
+
+        function masquerErreur() {
+            messageErreur.classList.add('hidden');
+            messageErreur.textContent = '';
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            masquerErreur();
+
+            const username = usernameInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!username || !password) {
+                afficherErreur('Veuillez renseigner le nom d\'utilisateur et le mot de passe.');
+                return;
+            }
+
+            btnSubmit.disabled = true;
+            btnSubmit.textContent = 'Connexion en cours...';
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Nom d\'utilisateur ou mot de passe incorrect.');
+                }
+
+                // Redirection vers la page demandée ou vers l'accueil
+                const urlParams = new URLSearchParams(window.location.search);
+                const redirectUrl = urlParams.get('next') || '/';
+                window.location.href = redirectUrl;
+            } catch (err) {
+                afficherErreur(err.message);
+                btnSubmit.disabled = false;
+                btnSubmit.textContent = 'Se connecter';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -4,8 +4,8 @@ Application web simple pour gérer 4 joueurs et générer automatiquement le
 calendrier des matchs de la saison : tous les dimanches entre le
 **01/10/2026** et le **30/03/2027**.
 
-- **Frontend** : `index.html` (vue calendrier, consultation), `indexnew.html` (même vue + boutons « Créer calendrier » / « Réinitialiser » — administration) et `ajout.html` (gestion des joueurs), Tailwind CSS via CDN, JavaScript vanilla.
-- **Backend** : `app.py` (Flask) — sert les pages et l'API REST sur le port **3020**.
+- **Frontend** : `login.html` (authentification), `index.html` (vue calendrier, consultation), `indexnew.html` (même vue + boutons « Créer calendrier » / « Réinitialiser » — administration) et `ajout.html` (gestion des joueurs), Tailwind CSS via CDN, JavaScript vanilla.
+- **Backend** : `app.py` (Flask) — sert les pages et l'API REST sur le port **3020** avec protection par session.
 - **Génération** : `calendrier.py` — peuple la table `calendrier` (utilisable en CLI ou via l'API).
 - **Base** : PostgreSQL (tables `joueur` et `calendrier`, créées automatiquement au démarrage).
 
@@ -13,14 +13,14 @@ calendrier des matchs de la saison : tous les dimanches entre le
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # puis renseigner DATABASE_URL
+cp .env.example .env   # puis renseigner DATABASE_URL, AUTH_USERNAME, AUTH_PASSWORD, SECRET_KEY
 ```
 
 ## Démarrage
 
 ```bash
 python app.py
-# puis ouvrir http://localhost:3020
+# puis ouvrir http://localhost:3020 (redirige vers la page de connexion)
 ```
 
 En Docker :
@@ -53,6 +53,8 @@ python calendrier.py --force  # réinitialise puis régénère
 
 | Méthode | Route | Rôle |
 |---|---|---|
+| POST | `/api/login` | Connexion utilisateur (authentification) |
+| POST | `/api/logout` | Déconnexion utilisateur |
 | GET | `/api/joueurs` | Liste des joueurs |
 | POST | `/api/joueurs` | Ajouter un joueur |
 | PUT | `/api/joueurs/<id>` | Modifier un joueur |
