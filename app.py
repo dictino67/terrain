@@ -108,12 +108,12 @@ def lister_joueurs():
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT id, nom, prenom, gsm, email FROM joueur ORDER BY nom, prenom")
+                cur.execute("SELECT id, nom, prenom, gsm, email, compteur FROM joueur ORDER BY nom, prenom")
                 rows = cur.fetchall()
         finally:
             conn.close()
         return jsonify([
-            {"id": r[0], "nom": r[1], "prenom": r[2], "gsm": r[3], "email": r[4]}
+            {"id": r[0], "nom": r[1], "prenom": r[2], "gsm": r[3], "email": r[4], "compteur": r[5]}
             for r in rows
         ])
     except (psycopg2.Error, RuntimeError) as e:
@@ -242,18 +242,27 @@ def modifier_match(match_id):
                     if cur.fetchone()[0] != 4:
                         return jsonify({"error": "Un ou plusieurs joueurs sont introuvables."}), 404
                     cur.execute(
-                        "UPDATE calendrier_joueur SET joueur_id = %s "
-                        "WHERE calendrier_id = %s AND poste = %s",
-                        (ids[0], match_id, 1),
+                        "SELECT joueur_id FROM calendrier_joueur "
+                        "WHERE calendrier_id = %s ORDER BY poste",
+                        (match_id,),
                     )
-                    if cur.rowcount == 0:
+                    anciens_ids = [row[0] for row in cur.fetchall()]
+                    if not anciens_ids:
                         return jsonify({"error": "Match introuvable."}), 404
-                    for poste, joueur_id in enumerate(ids[1:], start=2):
+                    for poste, joueur_id in enumerate(ids, start=1):
                         cur.execute(
                             "UPDATE calendrier_joueur SET joueur_id = %s "
                             "WHERE calendrier_id = %s AND poste = %s",
                             (joueur_id, match_id, poste),
                         )
+                    cur.execute(
+                        "UPDATE joueur SET compteur = compteur - 1 WHERE id = ANY(%s)",
+                        (anciens_ids,),
+                    )
+                    cur.execute(
+                        "UPDATE joueur SET compteur = compteur + 1 WHERE id = ANY(%s)",
+                        (ids,),
+                    )
         finally:
             conn.close()
         return jsonify({"message": "Match mis à jour avec succès."})
@@ -288,6 +297,8 @@ def reinitialiser():
                 with conn.cursor() as cur:
                     cur.execute("DELETE FROM calendrier")
                     supprimes = cur.rowcount
+                    if supprimes:
+                        cur.execute("UPDATE joueur SET compteur = 0")
         finally:
             conn.close()
         return jsonify({"message": f"Calendrier réinitialisé ({supprimes} matchs supprimés).",

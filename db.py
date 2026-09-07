@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS joueur (
     prenom VARCHAR(100) NOT NULL,
     gsm VARCHAR(20),
     email VARCHAR(255),
-    date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    date_inscription TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    compteur INTEGER NOT NULL DEFAULT 0
 )
 """
 
@@ -62,6 +63,11 @@ def init_db():
         with conn:
             with conn.cursor() as cur:
                 cur.execute(SCHEMA_JOUEUR)
+                # Migration : ajoute la colonne si la table existait déjà
+                cur.execute(
+                    "ALTER TABLE joueur "
+                    "ADD COLUMN IF NOT EXISTS compteur INTEGER NOT NULL DEFAULT 0"
+                )
 
                 cur.execute(
                     "SELECT column_name FROM information_schema.columns "

@@ -63,6 +63,7 @@
                         <th class="px-4 py-2 text-left">Nom complet</th>
                         <th class="px-4 py-2 text-left">GSM</th>
                         <th class="px-4 py-2 text-left">Email</th>
+                        <th class="px-4 py-2 text-left">Matchs joués</th>
                         <th class="px-4 py-2 text-left">Actions</th>
                     </tr>
                 </thead>
@@ -112,6 +113,7 @@
                         <td class="border px-4 py-2">${p.nom} ${p.prenom}</td>
                         <td class="border px-4 py-2">${p.gsm || ''}</td>
                         <td class="border px-4 py-2">${p.email || ''}</td>
+                        <td class="border px-4 py-2 text-center font-bold">${p.compteur ?? 0}</td>
                         <td class="border px-4 py-2 whitespace-nowrap">
                             <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded mr-1" onclick="editerJoueur(${p.id})">Modifier</button>
                             <button class="bg-red-500 hover:bg-red-600 text-white py-1 px-2 rounded" onclick="supprimerJoueur(${p.id})">Supprimer</button>

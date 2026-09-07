@@ -124,6 +124,7 @@ def generer_calendrier(force=False):
                     )
                 if existants:
                     cur.execute("DELETE FROM calendrier")
+                    cur.execute("UPDATE joueur SET compteur = 0")
                     logger.info("Réinitialisation : %d matchs existants supprimés.", existants)
 
                 ids = [j[0] for j in joueurs]
@@ -137,6 +138,10 @@ def generer_calendrier(force=False):
                         "INSERT INTO calendrier_joueur (calendrier_id, joueur_id, poste) "
                         "VALUES (%s, %s, %s)",
                         [(match_id, ids[indice], poste) for poste, indice in enumerate(indices, start=1)],
+                    )
+                    cur.executemany(
+                        "UPDATE joueur SET compteur = compteur + 1 WHERE id = %s",
+                        [(ids[indice],) for indice in indices],
                     )
                     logger.info(
                         "Match créé pour le %s : %s",

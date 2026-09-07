@@ -28,6 +28,7 @@
         <div class="bg-white rounded shadow p-4 mb-4 flex items-center gap-3 flex-wrap">
             <button id="btnGenerer" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">Créer calendrier</button>
             <button id="btnReset" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Réinitialiser</button>
+            <button id="btnExportCsv" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded">Export CSV</button>
             <span class="text-gray-500 text-sm">
                 La génération crée les matchs <strong>une seule fois</strong> pour toute la saison
                 (tous les dimanches du 01/10/2026 au 30/03/2027, 4 joueurs par match,
@@ -222,6 +223,29 @@
                 afficherMessage(e.message, false);
             }
             chargerCalendrier();
+        });
+
+        function valeurCsv(v) {
+            const s = String(v ?? '');
+            return /[";\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+        }
+
+        document.getElementById('btnExportCsv').addEventListener('click', () => {
+            if (matchs.length === 0) {
+                afficherMessage('Aucun match à exporter.', false);
+                return;
+            }
+            const lignes = ['Date du dimanche;Joueur 1;Joueur 2;Joueur 3;Joueur 4']
+                .concat(matchs.map(m => [
+                    fmtDate.format(new Date(m.date + 'T00:00:00')),
+                    m.joueur1, m.joueur2, m.joueur3, m.joueur4,
+                ].map(valeurCsv).join(';')));
+            const blob = new Blob(['﻿' + lignes.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+            const lien = document.createElement('a');
+            lien.href = URL.createObjectURL(blob);
+            lien.download = 'calendrier.csv';
+            lien.click();
+            URL.revokeObjectURL(lien.href);
         });
 
         document.addEventListener('DOMContentLoaded', chargerCalendrier);
