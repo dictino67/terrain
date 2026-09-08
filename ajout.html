@@ -15,13 +15,13 @@
     </style>
 </head>
 <body class="min-h-screen">
-    <div class="container mx-auto p-4 max-w-4xl">
-        <nav class="flex items-center justify-between mb-6 flex-wrap gap-2 bg-white bg-opacity-80 rounded shadow p-3">
-            <span class="text-xl font-bold">🎾 Gestion des joueurs</span>
-            <div>
-                <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded mr-2">Calendrier</a>
-                <a href="/ajout.html" class="bg-blue-500 text-white font-bold py-2 px-4 rounded mr-2">Gestion des joueurs</a>
-                <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded">Déconnexion</a>
+    <div class="container mx-auto p-2 sm:p-4 max-w-4xl">
+        <nav class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between mb-6 gap-2 bg-white bg-opacity-80 rounded shadow p-3">
+            <span class="text-lg sm:text-xl font-bold">🎾 Gestion des joueurs</span>
+            <div class="flex flex-col sm:flex-row flex-wrap gap-2">
+                <a href="/" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded text-center">Calendrier</a>
+                <a href="/ajout.html" class="bg-blue-500 text-white font-bold py-2 px-4 rounded text-center">Gestion des joueurs</a>
+                <a href="/logout" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-center">Déconnexion</a>
             </div>
         </nav>
 
@@ -58,7 +58,7 @@
         </h2>
         <p class="text-gray-700 text-sm mb-4 inline-block bg-white bg-opacity-80 rounded px-2 py-1">Au moins 4 joueurs sont requis pour générer le calendrier (tous les joueurs jouent chaque dimanche).</p>
         <div class="bg-white rounded shadow overflow-x-auto">
-            <table class="table-auto w-full">
+            <table class="table-auto w-full text-sm sm:text-base">
                 <thead class="bg-gray-200">
                     <tr>
                         <th class="px-4 py-2 text-left">Nom complet</th>
@@ -112,8 +112,8 @@
                 document.getElementById('playersTable').innerHTML = joueurs.map(p =>
                     `<tr class="hover:bg-gray-50">
                         <td class="border px-4 py-2">${p.nom} ${p.prenom}</td>
-                        <td class="border px-4 py-2">${p.gsm || ''}</td>
-                        <td class="border px-4 py-2">${p.email || ''}</td>
+                        <td class="border px-4 py-2">${p.gsm ? `<a href="tel:${p.gsm}" class="text-blue-600 hover:underline">${p.gsm}</a>` : ''}</td>
+                        <td class="border px-4 py-2">${p.email ? `<a href="mailto:${p.email}" class="text-blue-600 hover:underline break-all">${p.email}</a>` : ''}</td>
                         <td class="border px-4 py-2 text-center font-bold">${p.compteur ?? 0}</td>
                         <td class="border px-4 py-2 whitespace-nowrap">
                             <button class="bg-green-500 hover:bg-green-600 text-white py-1 px-2 rounded mr-1" onclick="editerJoueur(${p.id})">Modifier</button>
