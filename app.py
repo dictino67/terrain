@@ -343,7 +343,7 @@ def telecharger_ics(match_id):
         conn = get_connection()
         try:
             with conn.cursor() as cur:
-                cur.execute("SELECT date_sunday FROM calendrier WHERE id = %s", (match_id,))
+                cur.execute("SELECT date_sunday FROM calendrier WHERE id = %s and date_sunday >= CURRENT_DATE", (match_id,))
                 row = cur.fetchone()
                 if row is None:
                     return jsonify({"error": "Match introuvable."}), 404
