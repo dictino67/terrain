@@ -83,6 +83,24 @@
             return data;
         }
 
+        function formatDateCompacte(d) {
+            return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        function lienGoogleCalendar(m) {
+            const debut = new Date(m.date + 'T00:00:00');
+            const fin = new Date(debut);
+            fin.setDate(fin.getDate() + 1);
+            const noms = [m.joueur1, m.joueur2, m.joueur3, m.joueur4].filter(Boolean).join(', ');
+            const params = new URLSearchParams({
+                action: 'TEMPLATE',
+                text: 'Match tennis',
+                dates: `${formatDateCompacte(debut)}/${formatDateCompacte(fin)}`,
+                details: `Joueurs : ${noms}`,
+            });
+            return `https://calendar.google.com/calendar/render?${params.toString()}`;
+        }
+
         async function chargerCalendrier() {
             try {
                 [matchs, joueurs] = await Promise.all([
@@ -93,7 +111,10 @@
                 document.getElementById('vide').classList.toggle('hidden', matchs.length > 0);
                 document.getElementById('corpsCalendrier').innerHTML = matchs.map(m =>
                     `<tr class="hover:bg-gray-50">
-                        <td class="border px-4 py-2 capitalize whitespace-nowrap">${fmtDate.format(new Date(m.date + 'T00:00:00'))}</td>
+                        <td class="border px-4 py-2 capitalize whitespace-nowrap">
+                            <a href="${lienGoogleCalendar(m)}" target="_blank" rel="noopener" class="text-blue-600 hover:underline" title="Ajouter à Google Calendar">${fmtDate.format(new Date(m.date + 'T00:00:00'))}</a>
+                            <a href="/api/calendrier/${m.id}/ics" class="ml-1 no-underline" title="Télécharger l'événement (.ics)">📅</a>
+                        </td>
                         <td class="border px-4 py-2">${echapperHtml(m.joueur1 ?? '')}</td>
                         <td class="border px-4 py-2">${echapperHtml(m.joueur2 ?? '')}</td>
                         <td class="border px-4 py-2">${echapperHtml(m.joueur3 ?? '')}</td>

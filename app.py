@@ -9,6 +9,7 @@ Endpoints API :
 - DELETE /api/joueurs/<id>             Suppression (refusée si utilisé au calendrier)
 - GET    /api/calendrier               Liste des matchs (4 joueurs par match, postes 1 à 4)
 - PUT    /api/calendrier/<id>          Modifie les 4 joueurs d'un match
+- GET    /api/calendrier/<id>/ics      Télécharge le match au format iCalendar (.ics)
 - POST   /api/calendrier/generer       Génère le calendrier (une seule fois ; {"force": true} pour régénérer)
 - POST   /api/calendrier/reinitialiser Vide le calendrier
 """
@@ -17,10 +18,11 @@ import hmac
 import logging
 import os
 import re
+from datetime import datetime, timedelta, timezone
 
 import psycopg2
 from dotenv import load_dotenv
-from flask import Flask, jsonify, redirect, request, send_from_directory, session
+from flask import Flask, Response, jsonify, redirect, request, send_from_directory, session
 
 from calendrier import CalendrierError, generer_calendrier
 from db import get_connection, init_db
@@ -326,6 +328,61 @@ def modifier_match(match_id):
         return jsonify({"message": "Match mis à jour avec succès."})
     except psycopg2.Error as e:
         return jsonify({"error": f"Erreur base de données : {e}"}), 500
+
+
+def ics_echapper(texte):
+    """Échappe une valeur texte pour le format iCalendar (RFC 5545)."""
+    return (texte.replace("\\", "\\\\").replace(",", "\\,")
+            .replace(";", "\\;").replace("\n", "\\n"))
+
+
+@app.route("/api/calendrier/<int:match_id>/ics")
+def telecharger_ics(match_id):
+    """Génère un fichier .ics (événement journée entière) pour un match."""
+    try:
+        conn = get_connection()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT date_sunday FROM calendrier WHERE id = %s", (match_id,))
+                row = cur.fetchone()
+                if row is None:
+                    return jsonify({"error": "Match introuvable."}), 404
+                date_sunday = row[0]
+                cur.execute(
+                    "SELECT j.nom || ' ' || j.prenom FROM calendrier_joueur cj "
+                    "JOIN joueur j ON j.id = cj.joueur_id "
+                    "WHERE cj.calendrier_id = %s ORDER BY cj.poste",
+                    (match_id,),
+                )
+                joueurs = [r[0] for r in cur.fetchall()]
+        finally:
+            conn.close()
+    except (psycopg2.Error, RuntimeError) as e:
+        return jsonify({"error": f"Erreur base de données : {e}"}), 500
+
+    lignes = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//Terrain Tennis Hiver//Calendrier//FR",
+        "CALSCALE:GREGORIAN",
+        "BEGIN:VEVENT",
+        f"UID:match-{match_id}@terrain-tennis-hiver",
+        f"DTSTAMP:{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}",
+        f"DTSTART;VALUE=DATE:{date_sunday.strftime('%Y%m%d')}",
+        f"DTEND;VALUE=DATE:{(date_sunday + timedelta(days=1)).strftime('%Y%m%d')}",
+        f"SUMMARY:{ics_echapper('Match tennis')}",
+        f"DESCRIPTION:{ics_echapper('Joueurs : ' + ', '.join(joueurs))}",
+        "END:VEVENT",
+        "END:VCALENDAR",
+    ]
+    ics = "\r\n".join(lignes) + "\r\n"
+    return Response(
+        ics,
+        mimetype="text/calendar",
+        headers={
+            "Content-Disposition": f"attachment; filename=match-{date_sunday.isoformat()}.ics"
+        },
+    )
 
 
 @app.route("/api/calendrier/generer", methods=["POST"])
