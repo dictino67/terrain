@@ -73,41 +73,50 @@ Cet agent est responsable du développement, de la maintenance et de l'évolutio
 - **PK composite** : (`calendrier_id`, `poste`)
 - **UNIQUE** : (`calendrier_id`, `joueur_id`)
 
-## Spécifications du Projet
+---
 
-### 1. Objectif Principal
-Développer une application web complète (Frontend HTML/JS + Backend Flask + Base de données PostgreSQL) permettant de gérer des joueurs et de générer automatiquement un calendrier de matchs pour une saison sportive sur des dimanches précis.
+## 📜 Règles Métier Critiques
 
-### 2. Stack Technique
-- **Frontend** : HTML5, JavaScript (Vanilla), Tailwind CSS (via CDN).
-- **Backend** : Python (Flask), Python-dotenv (gestion des variables d'environnement).
-- **Base de données** : PostgreSQL (via psycopg2).
-- **Logique de génération** : Script Python dédié (`calendrier.py`) utilisant `datetime` ou `dateutil`.
-- **Conteneurisation** : Docker.
+### 1. Nombre Minimum de Joueurs
+⚠️ **Au moins 4 joueurs requis** pour générer le calendrier. Si moins de 4 joueurs sont présents, la génération échoue avec l'erreur : *"Au moins 4 joueurs requis."*
 
-### 3. Règles Métier Critiques
-- **Règle des joueurs** : La génération est bloquée si **moins de 4 joueurs** sont présents en base. Chaque dimanche comporte **exactement 4 joueurs** ; au-delà de 4 joueurs, ils **tournent par combinaisons de 4** (round-robin, fenêtre glissante) pour jouer le même nombre de matchs. La saison comptant 26 dimanches (104 places), l'égalité est parfaite uniquement si le nombre de joueurs divise 104 (4, 8, 13…) ; sinon rotation la plus équitable (écart max 1 match, consigné dans les logs).
-- **Modification** : chaque match peut être modifié individuellement (popup, 4 joueurs distincts existants). Avertissement affiché : une modification manuelle peut rompre l'équité.
-- **Période de la Saison** : Plage du **2026-10-01** au **2027-03-30** (inclus). Seuls les dimanches sont pris en compte.
-- **Intégrité des données** : Pas de doublons de matchs pour une même date. Utilisation systématique des IDs (clés étrangères) pour les relations joueurs/matchs. Validation stricte des formats (GSM international, Email unique).
+### 2. Composition des Matchs
+- Chaque match comporte **exactement 4 joueurs** (postes 1 à 4).
+- Les joueurs **tournent par combinaisons de 4** d'un dimanche à l'autre (algorithme glouton).
+- **Équité garantie** : l'écart maximum entre deux joueurs est d'**au plus 1 match**.
 
-### 4. Structure de la Base de Données (n8n_db)
-- **Table `joueur`** : `id` (PK), `nom`, `prenom`, `gsm`, `email`.
-- **Table `calendrier`** : `id` (PK), `date_sunday` (unique).
-- **Table `calendrier_joueur`** : (`calendrier_id` FK vers `calendrier` ON DELETE CASCADE, `joueur_id` FK vers `joueur`, `poste` 1..4) — PK (calendrier_id, poste), UNIQUE (calendrier_id, joueur_id).
+### 3. Période de Saison
+- Début : **2026-10-01** (premier dimanche)
+- Fin : **2027-03-30** (dernier dimanche inclus)
+- Nombre total de dimanches : **26 matchs**
 
-### 5. Instructions de Développement
-#### Sécurité & Bonnes Pratiques
-- **Injections SQL** : Utiliser impérativement des requêtes paramétrées.
-- **Secrets** : Ne jamais coder en dur les credentials. Utiliser le fichier `.env`.
-- **Validation** : Valider les données côté Frontend (UX) ET côté Backend (Sécurité).
+### 4. Immuabilité du Calendrier
+- La génération ne s'exécute **qu'une seule fois** par saison.
+- Pour régénérer, il faut **réinitialiser** le calendrier (supprime tous les matchs et remet à zéro les compteurs).
+- Option `--force` en CLI ou `{ "force": true }` via l'API pour régénérer sans passer manuellement par la réinitialisation.
 
-#### Workflow de Test
-1. Vérifier la connexion à la DB via l'URL dans `.env`.
-2. Tester l'ajout d'un joueur via `ajout.html`.
-3. Tenter de générer le calendrier avec < 4 joueurs (doit échouer).
-4. Ajouter les joueurs manquants pour atteindre 4.
-5. Lancer la génération et vérifier l'affichage sur `index.html`.
+### 5. Validation des Données
+- **GSM** : formats acceptés → `+32475123456`, `0475123456`, `0032475123456` (avec/sans espaces, points, tirets)
+- **Email** : doit être unique dans la base de données (insensible à la casse)
+- **Nom & Prénom** : obligatoires, max 100 caractères
+
+### 6. Modification des Matchs
+- Un match peut être modifié individuellement via l'interface.
+- Les 4 joueurs doivent être **distincts** et **existants** dans la table `joueur`.
+- Une modification manuelle rompt potentiellement l'équité automatique.
+
+---
+
+## 🖥️ Fonctionnalités par Page
+
+| Page | Route | Description | Actions Disponibles |
+|------|-------|-------------|---------------------|
+| **Login** | `/login`, `/login.html` | Authentification | Connexion, redirection vers page suivante |
+| **Calendrier (Consultation)** | `/index.html` | Affiche le calendrier complet | Voir les matchs, modifier un match, exporter en Google Calendar / .ics |
+| **Administration** | `/indexnew.html` | Vue admin avec contrôles | Créer calendrier, réinitialiser, modifier un match |
+| **Gestion Joueurs** | `/ajout.html` | CRUD joueurs | Ajouter, modifier, supprimer des joueurs |
+
+
 
 ## Historique des Modifications
 - **Initialisation** : Création du document de référence.
