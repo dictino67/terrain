@@ -1,8 +1,77 @@
 # AGENT.md
 
-## Rôle de l'Agent
+---
 
-Cet agent est responsable du développement, de la maintenance et de l'évolution de l'application de gestion de calendrier de matchs de football. Il doit respecter scrupuleusement les spécifications techniques et les règles métier définies.
+## 🎯 Rôle de l'Agent
+
+Cet agent est responsable du développement, de la maintenance et de l'évolution de l'application de gestion de calendrier de matchs de tennis. Il doit respecter scrupuleusement les spécifications techniques et les règles métier définies ci-dessous.
+
+---
+
+## 📋 Contexte du Projet
+
+**Application web complète** permettant à un groupe de joueurs de gérer leur participation aux matchs d'une saison sportive. Le calendrier est généré automatiquement selon des règles d'équité strictes.
+
+- **Saison** : 2026-2027 (Hiver)
+- **Période active** : 1er octobre 2026 → 30 mars 2027
+- **Fréquence des matchs** : Chaque dimanche
+- **Nombre total de dimanches** : 26 matchs
+- **Objectif** : Répartir équitablement les joueurs sur l'ensemble des matchs
+
+---
+
+## 🛠️ Stack Technique
+
+| Composant | Technologie | Détails |
+|-----------|-------------|---------|
+| **Frontend** | HTML5, JavaScript Vanilla | Tailwind CSS via CDN (design responsive) |
+| **Backend** | Python 3.11 + Flask | API REST sur `/api/*`, port 3020 |
+| **Base de données** | PostgreSQL | Connexion via `DATABASE_URL` (.env) |
+| **Dépendances** | Flask, psycopg2-binary, python-dotenv, python-dateutil | Voir `requirements.txt` |
+| **Conteneurisation** | Docker | Image optimisée (secrets hors image) |
+
+---
+
+## 🗄️ Architecture de la Base de Données
+
+### Schéma Relationnel
+
+```
+┌─────────────┐       ┌──────────────┐       ┌──────────────────┐
+│   joueur    │       │  calendrier  │       │ calendrier_joueur│
+├─────────────┤       ├──────────────┤       ├──────────────────┤
+│ id (PK)     │──┐    │ id (PK)      │◄──────│ calendrier_id(FK)│
+│ nom         │  │    │ date_sunday  │       │ joueur_id(FK)    │
+│ prenom      │  └────│              │       │ poste (1..4)     │
+│ gsm         │       │              │       │                  │
+│ email       │       └──────────────┘       └──────────────────┘
+│ compteur    │               ▲                    │
+│ date_insc.  │               │                    │
+└─────────────┘               └────────────────────┘
+      │                               (relation N à 4)
+      └──→ UNIQUE INDEX ON LOWER(email)
+```
+
+### Définition des Tables
+
+**Table `joueur`** :
+- `id` (SERIAL, PK)
+- `nom`, `prenom` (VARCHAR(100), NOT NULL)
+- `gsm` (VARCHAR(20)) — format normalisé `+32xxxxxxxxx`
+- `email` (VARCHAR(255)) — unique, insensible à la casse
+- `date_inscription` (TIMESTAMP, default CURRENT_TIMESTAMP)
+- `compteur` (INTEGER, default 0) — nombre de matchs joués
+
+**Table `calendrier`** :
+- `id` (SERIAL, PK)
+- `date_sunday` (DATE, UNIQUE) — la date du dimanche
+
+**Table `calendrier_joueur`** (table de liaison) :
+- `calendrier_id` (FK → calendrier.id, ON DELETE CASCADE)
+- `joueur_id` (FK → joueur.id)
+- `poste` (SMALLINT, CHECK BETWEEN 1 AND 4)
+- **PK composite** : (`calendrier_id`, `poste`)
+- **UNIQUE** : (`calendrier_id`, `joueur_id`)
 
 ## Spécifications du Projet
 
